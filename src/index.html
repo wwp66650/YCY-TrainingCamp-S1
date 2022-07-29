@@ -1,33 +1,270 @@
 <html>
-<head>
+  <head>
     <title>猿创营</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,minimum-scale=1.0,user-scalable=no">
-    <style type="text/css">
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-        }
-
-        div {
-            width: 100%;
-        }
-    </style>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,minimum-scale=1.0,user-scalable=no"
+    />
     <script src="https://pixijs.download/release/pixi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.10.4/gsap.min.js"></script>
-    <script src="./js/brakebanner.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+
     <script>
-        window.onload = init;
+      window.onload = () => {
+        const app = new PIXI.Application({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          backgroundColor: 0xff0000,
+          resizeTo: window,
+        });
 
-        function init() {
-            let banner = new BrakeBanner("#brakebanner");
-        }
+        // 画布
+        document.body.appendChild(app.view);
+
+        // 创建资源加载器
+        const loader = new PIXI.Loader();
+
+        // 向资源加载器添加资源
+        loader.add("bg.jpeg", "images/bg.jpeg"); //背景图片
+        loader.add("btn.png", "images/btn.png"); // 按钮
+        loader.add("btn_circle.png", "images/btn_circle.png"); // 按钮的外圈（美化用）
+        loader.add("brake_bike.png", "images/brake_bike.png"); // 车架
+        loader.add("brake_handlerbar.png", "images/brake_handlerbar.png"); // 车龙头
+        loader.add("brake_lever.png", "images/brake_lever.png"); // 刹车把
+        loader.load();
+        // 加载完成后的回调
+        loader.onComplete.add(() => {
+          // 绘制背景图片
+          const bgImage = new PIXI.Sprite(loader.resources["bg.jpeg"].texture);
+          // 调整背景图片缩放比例，使其完整清晰
+          bgImage.scale.x = 30; // 横轴方式放大 30 倍
+          bgImage.scale.y = 3; // 横轴方式放大 3 倍
+          // 将图片放入到 stage (实际也是一个容器`Container`，可以理解为应用的根容器)
+          app.stage.addChild(bgImage);
+
+          // 点击控制按钮
+          const btnImage = new PIXI.Sprite(loader.resources["btn.png"].texture);
+          // 新建一个容器来存放这个按钮
+          const actionButton = new PIXI.Container();
+          // 这个容器里面可以通过`addChild`来放入其他元素
+          actionButton.addChild(btnImage);
+          // 美化按钮（非必要）
+          //   beautifyButton();
+          // 调整按钮的坐标位置
+          actionButton.x = actionButton.y = 300;
+          // 将整个按钮容器放入到 stage (根容器)
+          app.stage.addChild(actionButton);
+
+          // 自行车包括三部分：车架、车龙头、刹车手柄
+          // 在场景中创建一个整体容器来存放自行车，方便整体的调整。而不是直接在 stage (根容器)上画
+          const bikeContainer = new PIXI.Container();
+          app.stage.addChild(bikeContainer);
+          // 因自行车图片较大，这里整体缩小下
+          bikeContainer.scale.x = bikeContainer.scale.y = 0.3;
+
+          // 车架
+          const bikeImage = new PIXI.Sprite(
+            loader.resources["brake_bike.png"].texture
+          );
+          bikeContainer.addChild(bikeImage);
+
+          // 刹车手柄
+          const bikeLeverImage = new PIXI.Sprite(
+            loader.resources["brake_lever.png"].texture
+          );
+          bikeContainer.addChild(bikeLeverImage);
+
+          // 车龙头
+          const bikeHandlerBarImage = new PIXI.Sprite(
+            loader.resources["brake_handlerbar.png"].texture
+          );
+          bikeContainer.addChild(bikeHandlerBarImage);
+
+          // 调整刹车手柄到合适的位置
+          // 中心点的位置
+          bikeLeverImage.pivot.x = 455;
+          bikeLeverImage.pivot.y = 455;
+          // 起点的位置
+          bikeLeverImage.x = 722;
+          bikeLeverImage.y = 900;
+          // 逆时针旋转 12 度
+          bikeLeverImage.rotation = (Math.PI / 180) * -12;
+
+          // 因为车体不完整，为了美观，保持在画面右下角
+          const resize = () => {
+            bikeContainer.x = window.innerWidth - bikeContainer.width;
+            bikeContainer.y = window.innerHeight - bikeContainer.height;
+          };
+          window.addEventListener("resize", resize);
+          resize();
+
+          // 实现按钮的交互效果
+          // `interactive` 属性需设为 `true` ，按钮才可交互
+          actionButton.interactive = true;
+          // 让鼠标放上时鼠标呈手指状
+          actionButton.buttonMode = true;
+
+          // 鼠标按下时事件
+          actionButton.on("mousedown", () => {
+            gsap.to(bikeLeverImage, {
+              duration: 0.6,
+              rotation: (Math.PI / 180) * -30,
+            });
+
+            pause();
+          });
+
+          // 鼠标抬起时事件
+          actionButton.on("mouseup", () => {
+            gsap.to(bikeLeverImage, {
+              duration: 0.6,
+              rotation: (Math.PI / 180) * -12,
+            });
+            start();
+          });
+
+          // 创建粒子容器，将容器加入到根容器
+          const particleContainer = new PIXI.Container();
+          app.stage.addChild(particleContainer);
+
+          // 将这些点存放在对象数组中
+          const particles = [];
+          const dots = [
+            { x: 10, y: 10, radius: 6, color: 0x000000 },
+            { x: 10, y: 200, radius: 6, color: 0x818181 },
+            { x: 10, y: 400, radius: 6, color: 0xf1cf54 },
+            { x: 210, y: 400, radius: 6, color: 0xb5cea8 },
+            { x: 210, y: 10, radius: 6, color: 0xf1cf54 },
+            { x: 210, y: 200, radius: 6, color: 0xff0000 },
+            { x: 410, y: 400, radius: 6, color: 0xff0000 },
+            { x: 410, y: 10, radius: 6, color: 0xff0000 },
+            { x: 410, y: 200, radius: 6, color: 0xff0000 },
+            { x: 610, y: 400, radius: 6, color: 0xff0000 },
+            { x: 610, y: 10, radius: 6, color: 0xff0000 },
+            { x: 610, y: 200, radius: 6, color: 0xff0000 },
+            { x: 810, y: 400, radius: 6, color: 0xff0000 },
+            { x: 810, y: 10, radius: 6, color: 0xff0000 },
+            { x: 810, y: 200, radius: 6, color: 0xff0000 },
+            { x: 100, y: 100, radius: 6, color: 0xffff00 },
+            { x: 100, y: 300, radius: 6, color: 0xffff00 },
+            { x: 300, y: 100, radius: 6, color: 0xffff00 },
+            { x: 300, y: 300, radius: 6, color: 0xffff00 },
+            { x: 500, y: 100, radius: 6, color: 0xffff00 },
+            { x: 500, y: 300, radius: 6, color: 0xffff00 },
+            { x: 700, y: 100, radius: 6, color: 0xffff00 },
+            { x: 700, y: 300, radius: 6, color: 0xffff00 },
+          ];
+          for (let i = 0; i < dots.length; i++) {
+            const gr = new PIXI.Graphics();
+            const item = dots[i];
+            gr.beginFill(item.color);
+            gr.drawCircle(0, 0, item.radius);
+            gr.endFill();
+            gr.x = item.x;
+            gr.y = item.y;
+            particleContainer.addChild(gr);
+            particles.push({ gr: gr, ...item });
+          }
+
+          // 初始速度为 0
+          let speed = 0;
+          start();
+          function start() {
+            // 动起来
+            speed = 0;
+            gsap.ticker.add(loop);
+          }
+
+          function loop() {
+            // 越来越快
+            speed += 0.5;
+            // 限制最大速度
+            speed = Math.min(speed, 20);
+            for (let i = 0; i < particles.length; i++) {
+              const item = particles[i];
+              const gr = item.gr;
+              // 在y轴方向上动起来
+              gr.y += speed;
+              // 速度达到某个值时，制造出速度线效果
+              if (speed > 19) {
+                gr.scale.x = 0.05;
+                gr.scale.y = 40;
+              }
+              // 超出底部边界后回到顶部继续移动
+              if (gr.y > window.innerHeight) {
+                gr.y = 0;
+              }
+            }
+          }
+
+          particleContainer.x = window.innerWidth / 2;
+          particleContainer.y = window.innerHeight / 2;
+          particleContainer.pivot.x = particleContainer.x;
+          particleContainer.pivot.y = particleContainer.y;
+          particleContainer.rotation = (35 * Math.PI) / 180;
+
+          function pause() {
+            // 先移除掉 requestAnimationFrame 的侦听
+            gsap.ticker.remove(loop);
+            for (let i = 0; i < particles.length; i++) {
+              const item = particles[i];
+              const gr = item.gr;
+
+              // 恢复小圆点的拉伸比例
+              gr.scale.x = 1;
+              gr.scale.y = 1;
+
+              // 让所有的小圆点使用弹性补间动画回到初始坐标
+              gsap.to(gr, {
+                duration: 0.6,
+                x: item.x,
+                y: item.y,
+                ease: "elastic.out",
+              });
+            }
+          }
+          beautifyButton();
+
+          function beautifyButton() {
+            // 绘制两个圆圈
+            const btnCircle = new PIXI.Sprite(
+              loader.resources["btn_circle.png"].texture
+            );
+            const btnCircle2 = new PIXI.Sprite(
+              loader.resources["btn_circle.png"].texture
+            );
+
+            actionButton.addChild(btnCircle);
+            actionButton.addChild(btnCircle2);
+
+            // 改变中心点
+            btnImage.pivot.x = btnImage.width / 2;
+            btnImage.pivot.y = btnImage.height / 2;
+            btnCircle.pivot.x = btnCircle.width / 2;
+            btnCircle.pivot.y = btnCircle.height / 2;
+            btnCircle2.pivot.x = btnCircle2.width / 2;
+            btnCircle2.pivot.y = btnCircle2.height / 2;
+
+            // 让其中一个圆圈从小到大无限循环
+            btnCircle.scale.x = btnCircle.scale.y = 0.8;
+            gsap.to(btnCircle.scale, {
+              duration: 1,
+              x: 1.2,
+              y: 1.2,
+              repeat: -1,
+            });
+            gsap.to(btnCircle, { duration: 1, alpha: 0, repeat: -1 });
+          }
+        });
+      };
     </script>
-</head>
+  </head>
 
-<body>
-    <div id="brakebanner"></div>
-</body>
-
+  <body></body>
 </html>
